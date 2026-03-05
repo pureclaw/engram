@@ -48,16 +48,13 @@ cargo install --git https://github.com/pureclaw/engram
 ## Quick start
 
 ```bash
-# 1. Initialize (auto-detects embedding provider)
-engram init
-
-# 2. Index your knowledge base
+# Index your knowledge base — index is created automatically on first run
 engram add ~/notes --recursive
 
-# 3. Search by meaning
+# Search by meaning
 engram search "machine learning approaches for time series regime detection"
 
-# 4. Check status
+# Check status
 engram status
 ```
 
@@ -79,8 +76,7 @@ The output is plain text — easy to parse, pipe, or inject directly into a prom
 
 | Command | Description |
 |---|---|
-| `engram init` | Initialize the index (auto-detects provider) |
-| `engram add <paths...>` | Index files or directories |
+| `engram add <paths...>` | Index files or directories (creates index on first run) |
 | `engram search <query>` | Search by meaning |
 | `engram remove <paths...>` | Remove files from index |
 | `engram rebuild` | Rebuild index from scratch |

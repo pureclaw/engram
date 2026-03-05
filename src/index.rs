@@ -14,27 +14,22 @@ const SNIPPET_LEN: usize = 300;
 // Public command handlers
 // ---------------------------------------------------------------------------
 
-pub fn init() -> Result<()> {
+pub fn add(paths: &[String], recursive: bool) -> Result<()> {
     let db_path = db_path()?;
-    if db_path.exists() {
-        println!("engram: already initialized at {}", db_path.display());
-        return Ok(());
+
+    // Auto-initialize on first use
+    let is_new = !db_path.exists();
+    if is_new {
+        std::fs::create_dir_all(db_path.parent().unwrap())?;
     }
 
-    std::fs::create_dir_all(db_path.parent().unwrap())?;
-    let provider = embed::detect_provider();
     let db = Db::open(&db_path)?;
-    db.init(provider.dims(), provider.name())?;
 
-    println!("✓ Initialized engram at {}", db_path.display());
-    println!("  Provider: {}", provider.name());
-    println!("  Dimensions: {}", provider.dims());
-    Ok(())
-}
-
-pub fn add(paths: &[String], recursive: bool) -> Result<()> {
-    let db_path = require_db()?;
-    let db = Db::open(&db_path)?;
+    if is_new {
+        let provider = embed::detect_provider();
+        db.init(provider.dims(), provider.name())?;
+        println!("✓ Created index at {} (provider: {})", db_path.display(), provider.name());
+    }
     let provider = load_provider(&db)?;
 
     let files = collect_files(paths, recursive);

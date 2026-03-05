@@ -8,7 +8,8 @@ use clap::{Parser, Subcommand};
     long_about = "engram indexes your plain text and markdown files into a local sqlite-vec\n\
                   database and lets you search them by meaning, not just keywords.\n\n\
                   Your files are never modified. The index is a sidecar artifact\n\
-                  stored in ~/.engram/index.db — delete it and rebuild anytime."
+                  stored in ~/.engram/index.db — delete it and rebuild anytime.\n\n\
+                  No setup required. The index is created automatically on first use."
 )]
 pub struct Cli {
     #[command(subcommand)]
@@ -17,9 +18,6 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 pub enum Commands {
-    /// Initialize engram in the current directory (or globally)
-    Init,
-
     /// Add files or directories to the index
     Add {
         /// Paths to index (files or directories)
