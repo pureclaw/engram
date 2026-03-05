@@ -2,73 +2,70 @@
 
 > Give your agents a brain.
 
-Private semantic memory for AI agents. Index your knowledge base, search by meaning — not keywords. Single binary, local models, no server required.
+Semantic memory for AI agents. Index your knowledge base, search by meaning — not keywords. Single binary, local models, no server required.
 
 AI agents are only as good as what they can recall. **engram** gives agents persistent, searchable memory over any collection of plain text and markdown files — without a database server, cloud service, or complex infrastructure.
 
 ```
-$ engram search "what should the system do when exchange connectivity drops"
- 1. notes/trading/feed-loss-handling.md    (dist: 17.4)
-    ...cancel all open orders immediately when feed loss is detected...
+$ engram search "why does my container keep restarting"
+ 1. docs/ops/pod-oom-crash-loop.md        (dist: 15.2)
+    ...set resource requests and limits; the kernel OOMKills the process when...
 
- 2. notes/trading/go-live-readiness.md     (dist: 18.4)
-    ...live feed loss handling must be implemented before any live trading...
+ 2. docs/ops/k8s-node-pressure.md         (dist: 17.1)
+    ...node memory pressure causes the kubelet to evict pods without limits set...
 ```
 
 Give an agent access to `engram search` and it can retrieve the right context from thousands of documents in milliseconds — without stuffing everything into the prompt.
 
 ## Keyword search vs. semantic search
 
-Say you have a note about your trading system's market data handling:
+Say you have a runbook note about a Kubernetes issue:
 
 ```markdown
-# feed-loss-handling.md
+# pod-oom-crash-loop.md
 
-The current stale-check only fires **before any data has ever arrived**.
-If the Coinbase WebSocket feed was delivering data and then disconnects,
-the market maker **keeps placing orders against a stale price**.
+The container is being OOMKilled by the kubelet. Resource limits are not
+set, so the pod gets scheduled on nodes without enough headroom and the
+kernel terminates the process when memory pressure spikes.
 
-This is a livelock: open limit orders sit on the exchange while the MM
-loops, generates quotes from the last known price (which could be 60s or
-more stale), and continues placing. If BTC moves 0.5% during an outage,
-we're quoting the wrong price into a gap.
-
-Fix: replace the point-in-time check with a time-since-last-update check.
-When feed loss is detected, cancel all open orders immediately.
+Fix: add resource requests and limits to the deployment manifest. Set
+requests.memory to the p50 observed usage and limits.memory to the p99.
+Use VPA in recommendation mode to calibrate initial values before
+committing to hard limits.
 ```
 
-Grep requires you to know which words are in the document:
+Grep works if you remember the right words:
 
 ```
-$ grep -rl "WebSocket\|stale price\|livelock" notes/
-notes/feed-loss-handling.md
+$ grep -rl "OOMKilled\|resource limits\|kubelet" docs/
+docs/ops/pod-oom-crash-loop.md
 ```
 
-Miss the exact terms? Miss the document:
+But natural language draws a blank:
 
 ```
-$ grep -rl "pulling quotes when exchange connectivity drops" notes/
+$ grep -rl "container keeps dying" docs/
 (no matches)
 ```
 
-engram finds it anyway — the meaning matches even though none of the words do:
+engram finds it — the meaning matches even though none of the words do:
 
 ```
-$ engram search "what should the system do when exchange connectivity drops" --limit 5
- 1. notes/feed-loss-handling.md          (dist: 17.4)
-    ...cancel all open orders immediately when feed loss is detected...
+$ engram search "container keeps dying after a few minutes" --limit 5
+ 1. docs/ops/pod-oom-crash-loop.md         (dist: 15.2)
+    ...the kernel terminates the process when memory pressure spikes...
 
- 2. notes/go-live-readiness.md           (dist: 18.4)
-    ...live feed loss handling must be implemented before any live trading...
+ 2. docs/ops/k8s-node-pressure.md          (dist: 16.8)
+    ...kubelet evicts pods that exceed their memory footprint...
 
- 3. notes/pre-live-implementation-plan.md (dist: 18.9)
-    ...two items block live trading: position limits and feed loss handling...
+ 3. docs/ops/docker-healthcheck-tuning.md  (dist: 18.1)
+    ...increase the start_period before the health check begins firing...
 
- 4. notes/testing-methodologies.md       (dist: 19.1)
-    ...simulate exchange disconnection during active order management...
+ 4. docs/ops/cgroup-limits.md              (dist: 18.4)
+    ...cgroup v2 memory.max enforcement kills processes that exceed the limit...
 
- 5. notes/market-making-design.md        (dist: 19.8)
-    ...order cancellation logic on connectivity events...
+ 5. docs/architecture/service-sizing.md    (dist: 19.2)
+    ...right-sizing services reduces both cost and crash-loop frequency...
 ```
 
 Lower distance = stronger match. Results are ranked by semantic similarity across your entire knowledge base — without a server, without a cloud API, and without knowing ahead of time which words your documents use.
@@ -104,13 +101,13 @@ cargo install --git https://github.com/pureclaw/engram
 ## Quick start
 
 ```bash
-# Index your knowledge base — index is created automatically on first run
-engram add ~/notes --recursive
+# Index your notes — index is created automatically on first run
+engram add ~/notes
 
 # Search by meaning
-engram search "machine learning approaches for time series regime detection"
+engram search "how do I configure connection pooling for high throughput"
 
-# Check status
+# Check what's indexed
 engram status
 ```
 
@@ -119,11 +116,11 @@ engram status
 engram is designed to be called as a tool from agent systems (OpenClaw, LangChain, custom loops, etc.):
 
 ```bash
-# Agent calls this to retrieve context before answering
-engram search "$(QUERY)" --limit 5
+# Agent retrieves relevant context before answering
+engram search "$QUERY" --limit 5
 
-# Agent indexes new knowledge after a session
-engram add ~/notes/new-discovery.md
+# Agent indexes a new document after capturing knowledge
+engram add ~/notes/new-runbook.md
 ```
 
 The output is plain text — easy to parse, pipe, or inject directly into a prompt. No SDK required.
@@ -138,13 +135,20 @@ The output is plain text — easy to parse, pipe, or inject directly into a prom
 | `engram rebuild` | Rebuild index from scratch |
 | `engram status` | Show index stats |
 
+**Options for `add`:**
+
+| Flag | Description |
+|---|---|
+| `--no-progress` | Plain text output instead of progress bar (useful in scripts/CI) |
+| `--recursive` / `-r` | Recursively index directories (default: on) |
+
 ## Embedding providers
 
-engram auto-detects the best available provider at `init` time and records the choice in the index. To switch providers, run `engram rebuild`.
+engram auto-detects the best available provider at init time and records the choice in the index. To switch providers, run `engram rebuild`.
 
-| Provider | How to use | Privacy |
+| Provider | How to enable | Privacy |
 |---|---|---|
-| `ollama/nomic-embed-text` | Run `ollama pull nomic-embed-text` | ✅ Fully local |
+| `ollama/nomic-embed-text` | `ollama pull nomic-embed-text` | ✅ Fully local |
 | `openai/text-embedding-3-small` | Set `OPENAI_API_KEY` | Cloud API |
 | OpenRouter | Set `OPENROUTER_API_KEY` | Cloud API |
 
@@ -152,7 +156,7 @@ engram auto-detects the best available provider at `init` time and records the c
 
 ## Supported file types
 
-`.md`, `.txt`, `.rst`, `.org`, `.adoc`
+`.md` `.txt` `.rst` `.org` `.adoc`
 
 ## Platforms
 
