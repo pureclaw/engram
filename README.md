@@ -7,15 +7,71 @@ Semantic memory for AI agents. Index your knowledge base, search by meaning — 
 AI agents are only as good as what they can recall. **engram** gives agents persistent, searchable memory over any collection of plain text and markdown files — without a database server, cloud service, or complex infrastructure.
 
 ```
-$ engram search "how do I handle feed loss in the market maker"
- 1. notes/trading/feed-loss-handling.md (score: 0.923)
-    Cancel all open orders immediately when the price feed drops. Stale quotes...
+$ engram search "what should the system do when exchange connectivity drops"
+ 1. notes/trading/feed-loss-handling.md    (dist: 17.4)
+    ...cancel all open orders immediately when feed loss is detected...
 
- 2. notes/trading/neverlose-design.md (score: 0.871)
-    Time-based stale detection: >10s no midpoint update triggers feed lost state...
+ 2. notes/trading/go-live-readiness.md     (dist: 18.4)
+    ...live feed loss handling must be implemented before any live trading...
 ```
 
 Give an agent access to `engram search` and it can retrieve the right context from thousands of documents in milliseconds — without stuffing everything into the prompt.
+
+## Keyword search vs. semantic search
+
+Say you have a note about your trading system's market data handling:
+
+```markdown
+# feed-loss-handling.md
+
+The current stale-check only fires **before any data has ever arrived**.
+If the Coinbase WebSocket feed was delivering data and then disconnects,
+the market maker **keeps placing orders against a stale price**.
+
+This is a livelock: open limit orders sit on the exchange while the MM
+loops, generates quotes from the last known price (which could be 60s or
+more stale), and continues placing. If BTC moves 0.5% during an outage,
+we're quoting the wrong price into a gap.
+
+Fix: replace the point-in-time check with a time-since-last-update check.
+When feed loss is detected, cancel all open orders immediately.
+```
+
+Grep requires you to know which words are in the document:
+
+```
+$ grep -rl "WebSocket\|stale price\|livelock" notes/
+notes/feed-loss-handling.md
+```
+
+Miss the exact terms? Miss the document:
+
+```
+$ grep -rl "pulling quotes when exchange connectivity drops" notes/
+(no matches)
+```
+
+engram finds it anyway — the meaning matches even though none of the words do:
+
+```
+$ engram search "what should the system do when exchange connectivity drops" --limit 5
+ 1. notes/feed-loss-handling.md          (dist: 17.4)
+    ...cancel all open orders immediately when feed loss is detected...
+
+ 2. notes/go-live-readiness.md           (dist: 18.4)
+    ...live feed loss handling must be implemented before any live trading...
+
+ 3. notes/pre-live-implementation-plan.md (dist: 18.9)
+    ...two items block live trading: position limits and feed loss handling...
+
+ 4. notes/testing-methodologies.md       (dist: 19.1)
+    ...simulate exchange disconnection during active order management...
+
+ 5. notes/market-making-design.md        (dist: 19.8)
+    ...order cancellation logic on connectivity events...
+```
+
+Lower distance = stronger match. Results are ranked by semantic similarity across your entire knowledge base — without a server, without a cloud API, and without knowing ahead of time which words your documents use.
 
 ## Why engram for agents?
 
