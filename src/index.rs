@@ -332,7 +332,8 @@ fn make_snippet(content: &str) -> String {
     if trimmed.len() <= SNIPPET_LEN {
         trimmed.to_string()
     } else {
-        format!("{}…", &trimmed[..SNIPPET_LEN])
+        let boundary = floor_char_boundary(trimmed, SNIPPET_LEN);
+        format!("{}…", &trimmed[..boundary])
     }
 }
 
