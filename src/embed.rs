@@ -106,12 +106,10 @@ fn embed_ollama(text: &str, base_url: &str) -> Result<Vec<f32>> {
         .build();
 
     let new_url = format!("{base_url}/api/embed");
-    match agent
-        .post(&new_url)
-        .send_json(serde_json::json!({
-            "model": "nomic-embed-text",
-            "input": text,
-        })) {
+    match agent.post(&new_url).send_json(serde_json::json!({
+        "model": "nomic-embed-text",
+        "input": text,
+    })) {
         Ok(resp) => {
             let body: serde_json::Value = resp.into_json()?;
             return body["embeddings"][0]
