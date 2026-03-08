@@ -97,13 +97,41 @@ fn embed_openai(text: &str) -> Result<Vec<f32>> {
 }
 
 fn embed_ollama(text: &str, base_url: &str) -> Result<Vec<f32>> {
-    // Use /api/embeddings (compatible with all Ollama versions) with "prompt" key.
-    // Explicit timeouts: connect 5s, read 60s (large files on CPU can take a few seconds).
+    // Ollama ≥0.1.26 uses /api/embed (input key, embeddings[0] response).
+    // Older versions use /api/embeddings (prompt key, embedding response).
+    // Try new endpoint first; fall back on 404.
     let agent = ureq::AgentBuilder::new()
         .timeout_connect(std::time::Duration::from_secs(5))
         .timeout_read(std::time::Duration::from_secs(60))
         .build();
 
+    let new_url = format!("{base_url}/api/embed");
+    match agent
+        .post(&new_url)
+        .send_json(serde_json::json!({
+            "model": "nomic-embed-text",
+            "input": text,
+        })) {
+        Ok(resp) => {
+            let body: serde_json::Value = resp.into_json()?;
+            return body["embeddings"][0]
+                .as_array()
+                .context("No embeddings in Ollama /api/embed response")?
+                .iter()
+                .map(|v| {
+                    v.as_f64()
+                        .map(|f| f as f32)
+                        .context("Non-numeric embedding value")
+                })
+                .collect();
+        }
+        Err(ureq::Error::Status(404, _)) => {
+            // Fall through to legacy endpoint
+        }
+        Err(e) => return Err(e.into()),
+    }
+
+    // Legacy: Ollama <0.1.26
     let resp: serde_json::Value = agent
         .post(&format!("{base_url}/api/embeddings"))
         .send_json(serde_json::json!({
@@ -114,7 +142,7 @@ fn embed_ollama(text: &str, base_url: &str) -> Result<Vec<f32>> {
 
     resp["embedding"]
         .as_array()
-        .context("No embedding in Ollama response")?
+        .context("No embedding in Ollama /api/embeddings response")?
         .iter()
         .map(|v| {
             v.as_f64()
