@@ -7,12 +7,9 @@ Semantic memory for AI agents. Index your knowledge base, search by meaning — 
 AI agents are only as good as what they can recall. **engram** gives agents persistent, searchable memory over any collection of plain text and markdown files — without a database server, cloud service, or complex infrastructure.
 
 ```
-$ engram search "something warm and filling for a cold night"
- 1. recipes/tuscan-white-bean-soup.md     (dist: 14.8)
-    ...slow-simmered cannellini beans with pancetta and kale, serve with crusty bread...
-
- 2. recipes/french-onion-soup.md          (dist: 15.6)
-    ...caramelized onions need patience — at least 45 minutes on low heat...
+$ engram search "something warm and filling"
+ 1. recipes/tuscan-white-bean-soup.md     (dist: 0.969)
+    # tuscan-white-bean-soup.md  Slow-simmer cannellini beans...
 ```
 
 Give an agent access to `engram search` and it can retrieve the right context from thousands of documents in milliseconds — without stuffing everything into the prompt.
@@ -49,21 +46,9 @@ $ grep -rl "something warm and filling" recipes/
 engram finds it — the meaning matches even though none of the words do:
 
 ```
-$ engram search "something warm and filling for a cold night" --limit 5
- 1. recipes/tuscan-white-bean-soup.md      (dist: 14.8)
-    ...slow-simmer cannellini beans with pancetta, kale, and a parmesan rind...
-
- 2. recipes/french-onion-soup.md           (dist: 15.6)
-    ...caramelized onions need patience — at least 45 minutes on low heat...
-
- 3. recipes/braised-short-ribs.md          (dist: 16.2)
-    ...low and slow in red wine, the collagen breaks down into silky sauce...
-
- 4. recipes/roasted-tomato-lentil-soup.md  (dist: 17.0)
-    ...blended until smooth, drizzle with yogurt and crispy chickpeas...
-
- 5. recipes/mushroom-risotto.md            (dist: 17.9)
-    ...stir constantly; the starch is what makes it creamy, not the butter...
+$ engram search "something warm and filling" --limit 5
+ 1. recipes/tuscan-white-bean-soup.md      (dist: 0.969)
+    # tuscan-white-bean-soup.md  Slow-simmer cannellini beans...
 ```
 
 Lower distance = stronger match. Results are ranked by semantic similarity across your entire collection — without a server, without a cloud API, and without knowing ahead of time which words your notes use.
